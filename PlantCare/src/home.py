@@ -5,7 +5,7 @@ app = Flask(__name__)
 from openai import OpenAI
 global client
 import requests
-client = OpenAI(api_key='sk-proj-ZC1toUDKGV726DLPTfq5T3BlbkFJtmYQXfjsMo9gl04yC8jL')
+client = OpenAI(api_key='secret')
 import ast
 
 
@@ -114,33 +114,29 @@ HOME_HTML = """
         </form>
     </body></html>"""
 
-@app.route('/greet')
 def greet():
     plant = request.args.get('plant', '')
     # get current measurement from sensors
-    temp, humidity, sunlight, moisture = get_data()
-    humidity = 0
-    sunlight = 1
-    temp = 2
-    moisture = 3
+    temp, humidity, moisture, sunlight = get_data()
     # get ideal measurement from apis
     params, recommendations = get_chat(temp, humidity, sunlight, moisture, plant)
     itemp = params[0]
     ihumidity = params[1]
     isunlight = params[2]
     imoisture = params[3]
-    
 
     if plant == '':
         msg1 = 'You did not tell me the name of the plant.'
     else:
         msg1 = 'The plant that we will be monitoring is ' + plant + '. <br>'
-        msg2 = (' Current Humidity: ' + str(humidity) + ' Ideal Humidity: ' + str(ihumidity) + '<br>'+
+        msg2 = (' Current Humidity: ' + str(humidity) + ' Ideal Humidity: ' + str(ihumidity) + '<br>' +
                 ' Current Sun Light Level: ' + str(sunlight) + ' Ideal Sun Light Level: ' + str(isunlight) + '<br>' +
                 ' Current Tempertaure: ' + str(temp) + ' Ideal Temperature: ' + str(itemp) + '<br>' +
                 ' Current Moisture ' + str(moisture) + ' Ideal Moisture: ' + str(imoisture) + '<br>')
 
-    return RESULT_HTML.format(plant, msg1, msg2)
+    return RESULT_HTML.format(plant, msg1, msg2, humidity, sunlight, temp, moisture, ihumidity, isunlight, itemp,
+                              imoisture, recommendations)
+
 
 RESULT_HTML = """
     <body style="background-color:MediumSeaGreen;">
@@ -150,34 +146,113 @@ RESULT_HTML = """
         <h1 style="font-family:'Brush Script MT', cursive;font-size:400%;text-align:center;"> {0}</h1>
         <p style="font-family:courier;text-align:center;"> {1}</p>
         <p style="font-family:courier;text-align:center;"> {2}</p>
-        
-        <div id="myChart" style="width:100%; max-width:600px; height:500px;"></div>
 
         <script>
         google.charts.load('current', {{'packages':['corechart']}});
-        google.charts.setOnLoadCallback(drawChart);
+        google.charts.setOnLoadCallback(drawHumidityChart);
+        google.charts.setOnLoadCallback(drawSunlightChart);
+        google.charts.setOnLoadCallback(drawTempChart);
+        google.charts.setOnLoadCallback(drawMoistureChart);
 
-        function drawChart() {{
+        function drawHumidityChart() {{
 
         // Set Data
         const data = google.visualization.arrayToDataTable([
-        ['Temp', '°F'],
-        ['Current',55],
-        ['Ideal', 45],
+        ['Humidity', 'g/kg'],
+        ['Current',{3}],
+        ['Ideal', {7}],
         ]);
 
         // Set Options
         const options = {{
-            title:'World Wide Wine Production'
+            title:'Current vs Ideal Humidity',
+            width:400,
+            height:300
         }};
 
         // Draw
-        const chart = new google.visualization.BarChart(document.getElementById('myChart'));
+        const chart = new google.visualization.BarChart(document.getElementById('humidityChart'));
+        chart.draw(data, options);
+
+        }}
+
+        function drawSunlightChart() {{
+
+        // Set Data
+        const data = google.visualization.arrayToDataTable([
+        ['Sun Light Level', 'W/m2'],
+        ['Current',{4}],
+        ['Ideal', {8}],
+        ]);
+
+        // Set Options
+        const options = {{
+            title:'Current vs Ideal Sun Light Level',
+            width:400,
+            height:300
+        }};
+
+        // Draw
+        const chart = new google.visualization.BarChart(document.getElementById('sunlightChart'));
+        chart.draw(data, options);
+
+        }}
+
+        function drawTempChart() {{
+
+        // Set Data
+        const data = google.visualization.arrayToDataTable([
+        ['Temp', '°F'],
+        ['Current',{5}],
+        ['Ideal', {9}],
+        ]);
+
+        // Set Options
+        const options = {{
+            title:'Current vs Ideal Temperature',
+            width:400,
+            height:300
+        }};
+
+        // Draw
+        const chart = new google.visualization.BarChart(document.getElementById('temperatureChart'));
+        chart.draw(data, options);
+
+        }}
+
+        function drawMoistureChart() {{
+
+        // Set Data
+        const data = google.visualization.arrayToDataTable([
+        ['Moisture', '°F'],
+        ['Current',{6}],
+        ['Ideal', {10}],
+        ]);
+
+        // Set Options
+        const options = {{
+            title:'Current vs Ideal Moisture',
+            width:400,
+            height:300
+        }};
+
+        // Draw
+        const chart = new google.visualization.BarChart(document.getElementById('moistureChart'));
         chart.draw(data, options);
 
         }}
         </script>
 
+        <table class="columns">
+      <tr>
+        <td><div id="humidityChart" style="border: 1px solid #ccc"></div></td>
+        <td><div id="sunlightChart" style="border: 1px solid #ccc"></div></td>
+        <td><div id="temperatureChart" style="border: 1px solid #ccc"></div></td>
+        <td><div id="moistureChart" style="border: 1px solid #ccc"></div></td>
+      </tr>
+    </table>
+    <p style="font-family:courier;text-align:center;"> Recommendations: </p>
+    <p style="font-family:courier;text-align:center;"> {11}</p>
     </body></html>
     """
 
